@@ -1,0 +1,392 @@
+[
+    {
+        "template_id": 1,
+        "num_step": 1,
+        "text": {
+            "simple": [
+                "put the <C2> <T2> <A1> the <C1> <T1> and put the <C3> <T3> <A2> the <C2> <T2> and put the <C4> <T4> <A3> the <C3> <T3> and put the <C5> <T5> <A4> <C4> <T4> and put the <C6> <T6> <A5> the <C5> <T5> and put the <C7> <T7> <A6> the <C6> <T6> and put the <C8> <T8> <A7> the <C7> <T7>"
+            ]
+        },
+        "program": [
+            {
+                "action": "<A1>",
+                "inputs": "<O1> <O2>"
+            }
+        ],
+        "constraints": {
+            "actions": ["LEFT", "RIGHT", "TOP"],
+            "action_preference": ["LEFT", "TOP", "RIGHT", "TOP", "LEFT", "TOP", "RIGHT"],
+            "inputs": [
+                1,
+                2
+            ]
+        },
+        "checkOnTable" : ["LEFT",1],
+        "num_unique_actions": 7,
+        "num_unique_objects": 8,
+        "nodes": [
+            {
+                "type": "idle",
+                "inputs": [],
+                "value_inputs": [],
+                "action": true
+            },
+            {
+                "type": "scene",
+                "inputs": [],
+                "value_inputs": [],
+                "action": false
+            },
+            {
+                "type": "filter_type",
+                "inputs": [
+                    1
+                ],
+                "value_inputs": [
+                    "<T1>"
+                ],
+                "action": false
+            },
+            {
+                "type": "filter_color",
+                "inputs": [
+                    2
+                ],
+                "value_inputs": [
+                    "<C1>"
+                ],
+                "action": false
+            },
+            {
+                "type": "unique",
+                "inputs": [
+                    3
+                ],
+                "value_inputs": [],
+                "action": false
+            },
+            {
+                "type": "scene",
+                "inputs": [],
+                "value_inputs": [],
+                "action": false
+            },
+            {
+                "type": "filter_type",
+                "inputs": [
+                    5
+                ],
+                "value_inputs": [
+                    "<T2>"
+                ],
+                "action": false
+            },
+            {
+                "type": "filter_color",
+                "inputs": [
+                    6
+                ],
+                "value_inputs": [
+                    "<C2>"
+                ],
+                "action": false
+            },
+            {
+                "type": "unique",
+                "inputs": [
+                    7
+                ],
+                "value_inputs": [],
+                "action": false
+            },
+            {
+                "type": "move",
+                "inputs": [
+                    8,
+                    4,
+                    0
+                ],
+                "value_inputs": [
+                    "<A1>"
+                ],            
+                "action": true
+            },
+            {
+                "type": "scene",
+                "inputs": [],
+                "value_inputs": [],
+                "action": false
+            },
+            {
+                "type": "filter_type",
+                "inputs": [
+                    10
+                ],
+                "value_inputs": [
+                    "<T3>"
+                ],
+                "action": false
+            },
+            {
+                "type": "filter_color",
+                "inputs": [
+                    11
+                ],
+                "value_inputs": [
+                    "<C3>"
+                ],
+                "action": false
+            },
+            {
+                "type": "unique",
+                "inputs": [
+                    12
+                ],
+                "value_inputs": [],
+                "action": false
+            },
+            {
+                "type": "move",
+                "inputs": [
+                    13,
+                    8,
+                    9
+                ],
+                "value_inputs": [
+                    "<A2>"
+                ],
+                "action": true
+            },
+            {
+                "type": "scene",
+                "inputs": [],
+                "value_inputs": [],
+                "action": false
+            },
+            {
+                "type": "filter_type",
+                "inputs": [
+                    15
+                ],
+                "value_inputs": [
+                    "<T4>"
+                ],
+                "action": false
+            },
+            {
+                "type": "filter_color",
+                "inputs": [
+                    16
+                ],
+                "value_inputs": [
+                    "<C4>"
+                ],
+                "action": false
+            },
+            {
+                "type": "unique",
+                "inputs": [
+                    17
+                ],
+                "value_inputs": [],
+                "action": false
+            },
+            {
+                "type": "move",
+                "inputs": [
+                    18,
+                    13,
+                    14
+                ],
+                "value_inputs": [
+                    "<A3>"
+                ],
+                "action": true
+            },
+            {
+                "type": "scene",
+                "inputs": [],
+                "value_inputs": [],
+                "action": false
+            },
+            {
+                "type": "filter_type",
+                "inputs": [
+                    20
+                ],
+                "value_inputs": [
+                    "<T5>"
+                ],
+                "action": false
+            },
+            {
+                "type": "filter_color",
+                "inputs": [
+                    21
+                ],
+                "value_inputs": [
+                    "<C5>"
+                ],
+                "action": false
+            },
+            {
+                "type": "unique",
+                "inputs": [
+                    22
+                ],
+                "value_inputs": [],
+                "action": false
+            },
+            {
+                "type": "move",
+                "inputs": [
+                    23,
+                    18,
+                    19
+                ],
+                "value_inputs": [
+                    "<A4>"
+                ],
+                "action": true
+            },
+            {
+                "type": "scene",
+                "inputs": [],
+                "value_inputs": [],
+                "action": false
+            },
+            {
+                "type": "filter_type",
+                "inputs": [
+                    25
+                ],
+                "value_inputs": [
+                    "<T6>"
+                ],
+                "action": false
+            },
+            {
+                "type": "filter_color",
+                "inputs": [
+                    26
+                ],
+                "value_inputs": [
+                    "<C6>"
+                ],
+                "action": false
+            },
+            {
+                "type": "unique",
+                "inputs": [
+                    27
+                ],
+                "value_inputs": [],
+                "action": false
+            },
+            {
+                "type": "move",
+                "inputs": [
+                    28,
+                    23,
+                    24
+                ],
+                "value_inputs": [
+                    "<A5>"
+                ],
+                "action": true
+            },
+            {
+                "type": "scene",
+                "inputs": [],
+                "value_inputs": [],
+                "action": false
+            },
+            {
+                "type": "filter_type",
+                "inputs": [
+                    30
+                ],
+                "value_inputs": [
+                    "<T7>"
+                ],
+                "action": false
+            },
+            {
+                "type": "filter_color",
+                "inputs": [
+                    31
+                ],
+                "value_inputs": [
+                    "<C7>"
+                ],
+                "action": false
+            },
+            {
+                "type": "unique",
+                "inputs": [
+                    32
+                ],
+                "value_inputs": [],
+                "action": false
+            },
+            {
+                "type": "move",
+                "inputs": [
+                    33,
+                    28,
+                    29
+                ],
+                "value_inputs": [
+                    "<A6>"
+                ],
+                "action": true
+            },
+            {
+                "type": "scene",
+                "inputs": [],
+                "value_inputs": [],
+                "action": false
+            },
+            {
+                "type": "filter_type",
+                "inputs": [
+                    35
+                ],
+                "value_inputs": [
+                    "<T8>"
+                ],
+                "action": false
+            },
+            {
+                "type": "filter_color",
+                "inputs": [
+                    36
+                ],
+                "value_inputs": [
+                    "<C8>"
+                ],
+                "action": false
+            },
+            {
+                "type": "unique",
+                "inputs": [
+                    37
+                ],
+                "value_inputs": [],
+                "action": false
+            },
+            {
+                "type": "move",
+                "inputs": [
+                    38,
+                    33,
+                    34
+                ],
+                "value_inputs": [
+                    "<A7>"
+                ],
+                "action": true
+            }
+            ]
+        }
+]
