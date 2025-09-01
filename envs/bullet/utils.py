@@ -13,8 +13,8 @@ def check_config(config):
     if "time_step" in config:
         assert type(config["time_step"]) == float, "time_step should be a float"
     if "real_time" in config:
-        assert config["real_time"] == bool, "real_time should be a boolean.  If you enable the real-time simulation, you don't need to call 'stepSimulation'"
-    
+        assert type(config["real_time"]) == bool, "real_time should be a boolean.  If you enable the real-time simulation, you don't need to call 'stepSimulation'"
+    return True
 
 def config_to_bullet_params(config):
     bullet_configs = {}
@@ -22,6 +22,8 @@ def config_to_bullet_params(config):
     bullet_configs["gravity"] = config["gravity"] if "gravity" in config else None
     bullet_configs["time_step"] = config["time_step"] if "time_step" in config else None
     bullet_configs["real_time"] = config["real_time"] if "real_time" in config else None
+    bullet_configs["resolution"] = config["resolution"] if "resolution" in config else [1024, 768]
+    bullet_configs["record"] = config["record"] if "record" in config else None
     return bullet_configs
 
 

@@ -185,5 +185,14 @@ class PandaRobot(object):
         self.open_fingers()
         self.move_to_joint_position(move_up_joint_positions[0:7], include_fingers=False)
         self.move_to_home_position(open_fingers=False)
-        
-        
+
+
+    def is_occupying(self, position):
+        '''Use collision model to check if robot body is occupying <position>'''
+        for link_id in range(p.getNumJoints(self.robot_id)):
+            aabb = p.getAABB(self.robot_id, link_id)
+            if (aabb[0] <= position[0] <= aabb[1] and
+                aabb[2] <= position[1] <= aabb[3] and
+                aabb[4] <= position[2] <= aabb[5]):
+                return True
+        return False
