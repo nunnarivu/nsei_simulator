@@ -1,5 +1,5 @@
 import numpy as np
-
+import importlib
 
 class RGBDSensor:
     def __init__(self, client, camera_info, image_info):
@@ -10,6 +10,20 @@ class RGBDSensor:
         assert self.is_image_info_valid(image_info), "Image info is not valid. Height and width must be specified and positive integers."
         self.set_camera_params(camera_info)
         self.set_image_info(image_info)
+        
+    def __getstate__(self):
+        state = self.__dict__.copy()
+        # Store module by name instead of the object
+        if "client" in state:
+            state["client"] = state["client"].__name__
+        return state
+
+    def __setstate__(self, state):
+        # Re-import the module by name
+        module_name = state["client"]
+        state["client"] = importlib.import_module(module_name)
+        self.__dict__.update(state)
+        
         
     def is_camera_info_valid(self, camera_info):
         # Validate camera_info

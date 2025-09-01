@@ -75,8 +75,9 @@ class DataConstructor(object):
         #generate a random scene based on given configs and template
         self.construct_handle.dataset_world.reset_world()
         self.construct_handle.generate_random_scene()
-        self.construct_handle.cache_current_state()
-        
+        self.construct_handle.save_checkpoint(state_tag = "initial_state", dump_to_file=True, root_folder=dataset_dir)
+
+
         previous_programs = set()
         for i in range(self.required_dataset_configs['num_instruction_per_scene']):
            
@@ -85,8 +86,10 @@ class DataConstructor(object):
             smpl_dir = os.path.join(dataset_dir, "{0:0=4d}".format(sample_no))
             os.mkdir(smpl_dir)
             
+            breakpoint()
             #reset the generator state to the cached state
-            self.construct_handle.reset_state(self.construct_handle.cached_state[0])
+            self.construct_handle.simulator_handle.reset()
+            self.construct_handle.load_checkpoint(from_file = os.path.join(dataset_dir, "initial_state.pkl"))
             
             self.construct_handle.save_instance(smpl_dir) #save the initial scene S00
             

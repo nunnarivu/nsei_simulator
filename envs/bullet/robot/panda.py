@@ -25,6 +25,8 @@ class PandaRobot(object):
         self.base_position = base_position if base_position is not None else [0,0.5,0.625]
         self.base_orientation = base_orientation if base_orientation is not None else p.getQuaternionFromEuler([0,0,-math.pi/2])
         self.robot_id = physics_client.loadURDF('franka_panda/panda.urdf', self.base_position, self.base_orientation, useFixedBase = 1)
+        self.id = self.robot_id # for API consistency
+        
         self.name = 'franka_panda'
         self.home_position = [0, -0.785, 0, -2.356, 0, 1.571, 0.785, 0.04] if 'home_position' not in kwargs else kwargs['home_position']
         

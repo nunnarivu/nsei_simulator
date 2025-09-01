@@ -19,9 +19,6 @@ class SimulatorInterface(object):
         self.checkpoint_cache = {}
         self.local_assets_path = os.path.join(os.path.dirname(__file__), "assets")
 
-        self.world = World(self.physics_client)
-        self.sensors = Sensors(self.physics_client)
-
     def _connect_to_client(self, simulator_configs):
         '''
         Connect to the physics client with the given config file
@@ -33,22 +30,31 @@ class SimulatorInterface(object):
             connection_options += f"--minGraphicsUpdateTimeMs=0 --mp4={self.bullet_configs['record'][0]} --fps={self.bullet_configs['record'][1]}"
         p.connect(self.bullet_configs["connection_mode"], options = connection_options)
         
+        self.physics_client = p
+        self.reset()
+    
+    def reset(self):
+        self.physics_client.resetSimulation()
+        
         if self.bullet_configs['gravity'] is not None:
-            p.setGravity(*self.bullet_configs['gravity'])
+            self.physics_client.setGravity(*self.bullet_configs['gravity'])
             self.gravity = self.bullet_configs['gravity']
         
         if self.bullet_configs['time_step'] is not None:
-            p.setTimeStep(self.bullet_configs['time_step'])
+            self.physics_client.setTimeStep(self.bullet_configs['time_step'])
             self.time_step = self.bullet_configs['time_step']
-             
+            
         if self.bullet_configs['real_time'] is not None:
-            p.setRealTimeSimulation(self.bullet_configs['real_time'])
+            self.physics_client.setRealTimeSimulation(self.bullet_configs['real_time'])
             self.real_time = self.bullet_configs['real_time']
 
-        p.setAdditionalSearchPath(pybullet_data.getDataPath())
-        self.physics_client = p
+        self.physics_client.setAdditionalSearchPath(pybullet_data.getDataPath())
         
-        
+        self.step_simulation(10)
+
+        self.world = World(self.physics_client)
+        self.sensors = Sensors(self.physics_client)
+
     @property
     def robot(self):
         '''
@@ -90,12 +96,6 @@ class SimulatorInterface(object):
         '''
         self._connect_to_client(self.config_file)
         
-    
-    def reset(self):
-        self.disconnect()
-        self.connect()
-        self.world = World(self.physics_client)
-        self.sensors = Sensors(self.physics_client)        
 
     def save_checkpoint(self, tag:str = None, dump_to_file:bool = False, root_folder:str = None):
         state_id = self.physics_client.saveState()
@@ -103,25 +103,42 @@ class SimulatorInterface(object):
             tag = "state_"+str(state_id)
         world_pickle = pickle.dumps(self.world)
         sensor_pickle = pickle.dumps(self.sensors)
-        self.checkpoint_cache[tag] = {"state_id": state_id, "world": world_pickle, "sensors": sensor_pickle}
+        
+        checkpoint = {"state_id": state_id, "world": world_pickle, "sensors": sensor_pickle}
+        self.checkpoint_cache[tag]  = checkpoint
         
         if dump_to_file:
             if root_folder is None:
                 root_folder = "checkpoints"
             os.makedirs(root_folder, exist_ok=True)
             path = os.path.join(root_folder, tag)
-            p.saveBullet(path + ".bullet")
+            self.physics_client.saveBullet(path + ".bullet")
             with open(path + ".pkl", "wb") as f:
                 pickle.dump(self.checkpoint_cache[tag], f)
+        return (tag, checkpoint)
 
-    def load_checkpoint(self, tag:str = None):
-        if tag is None:
-            warnings.warn("No tag provided. Loading the last saved checkpoint.")
+    def load_checkpoint(self, tag:str = None, from_file:str = None, checkpoint:dict = None):          
+        if from_file is not None:
+            checkpoint = pickle.load(open(from_file, "rb"))
+        
+        if tag is not None:
+            checkpoint = self.checkpoint_cache.get(tag)
+            if checkpoint is None:
+                raise ValueError(f"Checkpoint with tag {tag} not found")
+        
+        elif tag is None and checkpoint is None:
+            warnings.warn("No tag/file/checkpoint_dict provided. Trying to load the last saved checkpoint.")
+            assert len(self.checkpoint_cache) > 0, "No checkpoints available to load"
             tag = list(self.checkpoint_cache.keys())[-1]
-        checkpoint = self.checkpoint_cache.get(tag)
-        if checkpoint is None:
-            raise ValueError(f"Checkpoint with tag {tag} not found")
-        self.physics_client.restoreState(checkpoint["state_id"])
+            checkpoint = self.checkpoint_cache[tag]
+        
         self.world = pickle.loads(checkpoint["world"])
         self.sensors = pickle.loads(checkpoint["sensors"])
-
+        
+        try:
+            self.physics_client.restoreState(checkpoint["state_id"])
+        except:
+            warnings.warn("Failed to restore physics client state. The world may not be in the expected state. Trying to use bullet file if available")
+            if from_file is not None:
+                bullet_file = from_file.replace(".pkl", ".bullet")
+                self.physics_client.restoreState(fileName = bullet_file)

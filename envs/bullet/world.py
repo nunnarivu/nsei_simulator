@@ -1,26 +1,49 @@
 
+import time
 import pybullet as p
 import pybullet_data
 import json
-
+import importlib
 from envs.bullet.robot import PandaRobot
 
 
 class Entity(object):
-    def __init__(self, physics_client, id:int, name:str, pos:tuple, ori:tuple, model_path:str = None):
+    def __init__(self, physics_client, name:str, pos:tuple, ori:tuple, model_path:str = None):
         self.physics_client = physics_client
-        self.id = id
         self.name = name
         self.pos = pos
         self.ori = ori
-        self.model_path = model_path
-        
+        self.model_path = model_path    
+        self.__create__()
+    
+    def __create__(self, expected_id = None):
+        self.id = self.physics_client.loadURDF(self.model_path, self.pos, self.ori)
+        if hasattr(self, 'color'):
+            self.change_color(self.color)
+        if expected_id is not None:
+            assert self.id == expected_id, "The expected body ID is not yet available."  
+            
     def __str__(self):
         return json.dumps({"id": self.id, "name": self.name, "pos": self.pos, "ori": self.ori, "model_path": self.model_path})
     
+    def __getstate__(self):
+        state = self.__dict__.copy()
+        # Store module by name instead of the object
+        if "physics_client" in state:
+            state["physics_client"] = state["physics_client"].__name__
+        return state
+
+    def __setstate__(self, state):
+        # Re-import the module by name
+        module_name = state["physics_client"]
+        state["physics_client"] = importlib.import_module(module_name)
+        self.__dict__.update(state)
+
     def remove(self):
         self.physics_client.removeBody(self.id)
-     
+        for _ in range(10):
+            self.physics_client.stepSimulation()
+
     def update_pose(self, pos = None, ori = None):
         if pos is not None:
             self.pos = pos
@@ -29,7 +52,8 @@ class Entity(object):
 
     def change_color(self, color:tuple):
         self.physics_client.changeVisualShape(self.id, -1, rgbaColor=color)
-        
+        self.color = color
+
     def get_body_position(self):
         return self.physics_client.getBasePositionAndOrientation(self.id)[0]
     
@@ -53,8 +77,8 @@ class Entity(object):
         return False
 
 class Object(Entity):
-    def __init__(self, physics_client, id:int, name:str, pos:tuple, ori:tuple, model_path:str, obj_id:int):
-        super().__init__(physics_client, id, name, pos, ori, model_path)
+    def __init__(self, physics_client, name:str, pos:tuple, ori:tuple, model_path:str, obj_id:int):
+        super().__init__(physics_client, name, pos, ori, model_path)
         self.obj_id = obj_id
         self.dim = physics_client.getVisualShapeData(self.id)[0][3]
     
@@ -62,12 +86,10 @@ class Object(Entity):
         base_str = json.dumps({ "id": self.id, "name": self.name, "pos": self.pos, "ori": self.ori,"model_path": self.model_path, "obj_id": self.obj_id, })
         return base_str
     
-    
-
 
 class SpecialObject(Object):
-    def __init__(self,physics_client, id:int, name:str, pos:tuple, ori:tuple, model_path:str, obj_id:int, tag:str):
-        super().__init__(physics_client, id, name, pos, ori, model_path, obj_id)
+    def __init__(self,physics_client, name:str, pos:tuple, ori:tuple, model_path:str, obj_id:int, tag:str):
+        super().__init__(physics_client, name, pos, ori, model_path, obj_id)
         self.tag = tag
         self.attributes = {}
     
@@ -84,10 +106,10 @@ class SpecialObject(Object):
 class WorldUtils(object):
     def __init__(self, physics_client):
         self.physics_client = physics_client
-        self.objects = []
-        self.robots = []
-        self.entities = []
-        self.special_objects = []
+        self.object_list = []
+        self.robot_list = []
+        self.entity_list = []
+        self.special_object_list = []
     
     @property
     def class2type(self):
@@ -109,12 +131,11 @@ class WorldUtils(object):
         Add an object from the URDF taht needs to be manipulated by the robot. 
         It assigns an object ID and name to every objects added 
         '''
-        id = self.physics_client.loadURDF(model_path, pos, ori)
-        obj_id = len(self.objects)
-        if not self._check_unique_name(name, self.objects):
+        obj_id = len(self.object_list)
+        if not self._check_unique_name(name, self.object_list):
             raise ValueError(f"Object with name {name} already exists")
-        obj = Object(self.physics_client, id, name, pos, ori, model_path, obj_id)
-        self.objects.append(obj)
+        obj = Object(self.physics_client, name, pos, ori, model_path, obj_id)
+        self.object_list.append(obj)
         return obj
     
     def _add_entity(self, name:str, pos:tuple, ori:tuple, model_path:str = None):
@@ -123,46 +144,59 @@ class WorldUtils(object):
         
         Desc: The urdf file can be plane, table or any other object. The object is loaded at the given position and orientation
         '''
-        id = self.physics_client.loadURDF(model_path, pos, ori)
-        if not self._check_unique_name(name, self.entities):
+        if not self._check_unique_name(name, self.entity_list):
             raise ValueError(f"Entity with name {name} already exists")
-        entity = Entity(self.physics_client, id, name, pos, ori, model_path)
-        self.entities.append(entity)
+        entity = Entity(self.physics_client, name, pos, ori, model_path)
+        self.entity_list.append(entity)
         return entity
 
     def _add_special_object(self, name:str, pos:tuple, ori:tuple, model_path:str, tag:str):
-        id = self.physics_client.loadURDF(model_path, pos, ori)
-        obj_id = len(self.special_objects)
-        if not self._check_unique_name(name, self.special_objects):
+        obj_id = len(self.special_object_list)
+        if not self._check_unique_name(name, self.special_object_list):
             raise ValueError(f"Special Object with name {name} already exists")
-        obj = SpecialObject(self.physics_client, id, name, pos, ori, model_path, obj_id, tag)
-        self.special_objects.append(obj)
+        obj = SpecialObject(self.physics_client, name, pos, ori, model_path, obj_id, tag)
+        self.special_object_list.append(obj)
         return obj
     
     def _add_robot(self, name:str, pos:tuple, ori:tuple, model_path:str, robot_cls):
-        id = self.physics_client.loadURDF(model_path, pos, ori)
-        robot = robot_cls(id, name, pos, ori, model_path)
-        self.robots.append(robot)
+        robot = robot_cls(self.physics_client, name, pos, ori, model_path)
+        self.robot_list.append(robot)
         return robot
     
     def _search_by_name(self, name:str) -> tuple[Entity, list]:        
-        for obj in self.objects:
+        for obj in self.object_list:
             if obj.name == name:
-                return obj, self.objects
+                return obj, self.object_list
         
-        for obj in self.special_objects:
+        for obj in self.special_object_list:
             if obj.name == name:
-                return obj, self.special_objects
+                return obj, self.special_object_list
         
-        for entity in self.entities:
+        for entity in self.entity_list:
             if entity.name == name:
-                return entity, self.entities
+                return entity, self.entity_list
         
-        for robot in self.robots:
+        for robot in self.robot_list:
             if robot.name == name:
-                return robot, self.robots
+                return robot, self.robot_list
         return None, None
+    
+    def __getstate__(self):
+        state = self.__dict__.copy()
+        # Store module by name instead of the object
+        if "physics_client" in state:
+            state["physics_client"] = state["physics_client"].__name__
+        return state
 
+    def __setstate__(self, state):
+        # Re-import the module by name
+        module_name = state["physics_client"]
+        state["physics_client"] = importlib.import_module(module_name)
+        self.__dict__.update(state)
+        all_objects = self.object_list + self.special_object_list + self.entity_list + self.robot_list
+        all_objects.sort(key=lambda x: x.id)
+        for i, obj in enumerate(all_objects):
+            obj.__create__(expected_id = obj.id)
 
 class World(WorldUtils):
     def __init__(self, physics_client):
@@ -212,11 +246,11 @@ class World(WorldUtils):
             obj, obj_list = self._search_by_name(name)
             return obj
         if id is not None:
-            for obj in self.objects + self.special_objects + self.entities + self.robots:
+            for obj in self.object_list + self.special_object_list + self.entity_list + self.robot_list:
                 if obj.id == id:
                     return obj
         if type is not None:
-            obj_list = eval(f'self.{type}s')
+            obj_list = eval(f'self.{type}_list')
             return obj_list
         return None
 
@@ -238,7 +272,7 @@ class World(WorldUtils):
 
         for obj_type in types:
             assert obj_type in ['object', 'entity', 'special_object', 'robot'], f"Object type {obj_type} not supported"
-            obj_list = eval(f'self.{obj_type}s')
+            obj_list = eval(f'self.{obj_type}_list')
             for obj in obj_list:
                 obj.remove()
                 obj_list.remove(obj)
@@ -248,7 +282,7 @@ class World(WorldUtils):
         if tag is None:
             tag = "state_"+str(len(self.state_cache))
         state = {}
-        for obj in self.objects + self.special_objects + self.entities + self.robots:
+        for obj in self.object_list + self.special_object_list + self.entity_list + self.robot_list:
             pos, ori = p.getBasePositionAndOrientation(obj.id)
             linear_vel, angular_vel = p.getBaseVelocity(obj.id)
             state[obj.name] = {
@@ -269,9 +303,9 @@ class World(WorldUtils):
             if obj is not None:
                 objects_to_check.append(obj)
         elif obj_type is not None:
-            objects_to_check = eval(f'self.{obj_type}s')
+            objects_to_check = eval(f'self.{obj_type}_list')
         else:
-            objects_to_check = self.objects + self.special_objects + self.entities + self.robots
+            objects_to_check = self.object_list + self.special_object_list + self.entity_list + self.robot_list
 
         for obj in objects_to_check:
             if obj.is_occupying(position=position):
@@ -285,3 +319,6 @@ class World(WorldUtils):
                 if len(contacts) > 0:
                     return True
         return False
+    
+    def load_state(self, state_dict):
+        pass
