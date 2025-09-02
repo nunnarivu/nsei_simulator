@@ -34,7 +34,7 @@ required_dataset_configs = {
 
 
 additional_dataset_configs = {
-   'instantiation_type' : 'default', #Type: str, options: ['random', 'default'], Default: 'default
+   'instantiation_type' : 'random', #Type: str, options: ['random', 'default'], Default: 'default
    'complexity' : 'simple', #options: ['simple', 'complex', 'compound'], Default: Randomly choosen
    'relations' : ['left', 'right', 'behind', 'front'], #Use this to restrict relations. If this key is not there, the relational_concepts will be sampled from ["left", "right", "behind", "front"]
    'max_program_generation_atempts': 3000 #For each scene, the simulator will try to find a compatible program. This key restricts the number of such attempts. If all attempts failed, then the scene will get deleted.

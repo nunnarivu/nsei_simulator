@@ -21,7 +21,6 @@
                 2
             ]
         },
-        "checkOnTable" : ["LEFT",1],
         "num_unique_actions": 7,
         "num_unique_objects": 8,
         "nodes": [

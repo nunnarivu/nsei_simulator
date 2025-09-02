@@ -1,7 +1,7 @@
 
 import numpy as np
 from dataset.nsrm.configs import ParameterSettings as settings
-
+from dataset.nsrm.construct.program_engine import ProgramExecutor
 
 
 
@@ -42,6 +42,14 @@ class DatasetWorld(object):
 
     def is_position_clear(self, pos):
         return not self.simulator_handle.world.is_position_colliding(pos, obj_type = 'object')
+    
+    def is_positions_nearby(self, object_positions, target_position = None, skip_object = None, threshold = 0.05):
+        for obj_pos in object_positions:
+            if obj_pos == skip_object:
+                continue
+            if np.linalg.norm(np.array(obj_pos) - np.array(target_position)) < threshold:
+                return True
+        return False
 
     def get_block_positions(self, num_blocks, ensure_visibility = False, ):
         if ensure_visibility:
@@ -63,30 +71,67 @@ class DatasetWorld(object):
     
     def _inside_target_pos(self, ):
         pass
-    
-    def _top_target_pos(self, ):
-        pass
-    
-    def _left_target_pos(self, ):
-        pass
-    
-    def _right_target_pos(self, ):
-        pass
-    
-    def _back_target_pos(self, ):
-        pass
-    
-    def _front_target_pos(self, ):
-        pass
-    
-    
+
+    def _top_target_pos(self, base_obj_idx, move_obj_idx, all_block_positions = None):
+        '''
+			Inputs: (Note that the indices are not the object id w.r.t bullet client. The bullet may have additional objects like table and plane.)
+				base_obj_id(int): Index of the id w.r.t the action is performed
+				move_obj_id(int): The index of the object being moved
+				all_block_positions:(list of 3-tuples) The list of positions of all objects in the PandaWorld
+			Description: The target z co-ordinate = The left-bottom corner of base_obj + the height of the base object.
+		'''
+        if all_block_positions is None:
+            all_block_positions = [obj.pos for obj in self.simulator_handle.world.find(type='object')]
+        base_pos = all_block_positions[base_obj_idx]
+        base_dim = self.simulator_handle.world.find(type='object')[base_obj_idx].dim
+        move_z_pos = base_pos[2] + base_dim[2]
+        # print(base_pos[2],base_dim)
+        target_pos = [base_pos[0], base_pos[1], move_z_pos]
+        return target_pos
+
+    def _left_target_pos(self, base_obj_idx, move_obj_idx, all_block_positions = None):
+        if all_block_positions is None:
+            all_block_positions = [obj.pos for obj in self.simulator_handle.world.find(type='object')]
+        base_pos = all_block_positions[base_obj_idx]
+        move_dim  = self.simulator_handle.world.find(type='object')[move_obj_idx].dim
+        move_left_pos = base_pos[0] -move_dim[0] - settings.SPATIAL_TARGET_MARGIN
+        target_pos = [move_left_pos, base_pos[1], base_pos[2]]
+        return target_pos
+
+    def _right_target_pos(self, base_obj_idx, move_obj_idx, all_block_positions = None):
+        if all_block_positions is None:
+            all_block_positions = [obj.pos for obj in self.simulator_handle.world.find(type='object')]
+        base_pos = all_block_positions[base_obj_idx]
+        base_dim = self.simulator_handle.world.find(type='object')[base_obj_idx].dim
+        move_right_pos = base_pos[0] + base_dim[0] + settings.SPATIAL_TARGET_MARGIN
+        target_pos = [move_right_pos, base_pos[1], base_pos[2]]
+        return target_pos
+
+    def _back_target_pos(self, base_obj_idx, move_obj_idx, all_block_positions = None):
+        if all_block_positions is None:
+            all_block_positions = [obj.pos for obj in self.simulator_handle.world.find(type='object')]
+        base_pos = all_block_positions[base_obj_idx]
+        move_dim  = self.simulator_handle.world.find(type='object')[move_obj_idx].dim
+        move_back_pos = base_pos[1] - move_dim[1] - settings.SPATIAL_TARGET_MARGIN
+        target_pos = [base_pos[0], move_back_pos, base_pos[2]]
+        return target_pos
+
+    def _front_target_pos(self, base_obj_idx, move_obj_idx, all_block_positions = None):
+        if all_block_positions is None:
+            all_block_positions = [obj.pos for obj in self.simulator_handle.world.find(type='object')]
+        base_pos = all_block_positions[base_obj_idx]
+        base_dim = self.simulator_handle.world.find(type='object')[base_obj_idx].dim
+        move_front_pos = base_pos[1] + base_dim[1] + settings.SPATIAL_TARGET_MARGIN
+        target_pos = [base_pos[0], move_front_pos, base_pos[2]]
+        return target_pos
 
 
 
 class DatasetConstructBase(object):
     def __init__(self, simulator_handle, configs):
         self.dataset_world = DatasetWorld(simulator_handle, configs)
-    
+        self.executor = ProgramExecutor(self)
+
     @property
     def simulator_handle(self):
         return self.dataset_world.simulator_handle
@@ -94,6 +139,10 @@ class DatasetConstructBase(object):
     @property
     def configs(self):
         return self.dataset_world.configs
+    
+    @property
+    def objects(self):
+        return self.dataset_world.simulator_handle.world.find(type='object')
 
     def hide_robot_body(self, **kwargs):
         pass
@@ -101,7 +150,7 @@ class DatasetConstructBase(object):
     def  show_robot_body(self, ):
         pass
     
-    def save_instance(self, ):
+    def save_instance(self, save_dir):
         pass
     
     def get_scene_info(self, ):
@@ -110,15 +159,79 @@ class DatasetConstructBase(object):
     def cache_current_position_info(self, ):
         pass
     
-    def apply_program(self, ):
-        pass
-    
-    def move_object(self, ):
-        pass
-    
-    def check_action_compatiblity(self, ):
-        pass
-    
-    
-    
-    
+    def execute_plan(self, plan, use_robot = False):
+        for move_obj_idx, target_pos in plan:
+            self.move_object(move_obj_idx, target_pos, use_robot)
+
+    def move_object(self, move_obj_idx, target_pos, use_robot = False):
+        if use_robot:
+            raise NotImplementedError
+        else:
+            move_obj = self.simulator_handle.world.find(type='object')[move_obj_idx]
+            move_obj.reset_pose(pos = target_pos)
+            self.simulator_handle.step_simulation(num_steps=50)
+
+    def check_action_compatibility(self, program, block_positions):
+        import copy
+        target_positions = list()
+        plan = list()
+        block_positions_cur = copy.deepcopy(block_positions)
+        for subtasks in program:
+            action, move_obj_idx, base_obj_idx = subtasks
+            if move_obj_idx == base_obj_idx: return None, None
+            
+            # check if move object doesn't have anything on top
+            up_pos = self.dataset_world._top_target_pos(move_obj_idx, move_obj_idx, block_positions_cur)
+            if self.dataset_world.is_positions_nearby(object_positions = block_positions_cur, target_position = up_pos, skip_object = move_obj_idx):
+                print("Not clear from top ")
+                return None, None
+            
+            # check if target position valid
+            if action == 'TOP':
+                tr_pos = self.dataset_world._top_target_pos(base_obj_idx, move_obj_idx, block_positions_cur)
+                if not self.dataset_world.is_positions_nearby(block_positions_cur, tr_pos, base_obj_idx):
+                    target_positions.append(tr_pos)
+                    block_positions_cur[move_obj_idx] = tr_pos
+                else:
+                    print("top positon not empty")
+                    return None, None
+            elif action == 'LEFT':
+                tr_pos = self.dataset_world._left_target_pos(base_obj_idx, move_obj_idx, block_positions_cur)
+                if not self.dataset_world.is_positions_nearby(block_positions_cur, tr_pos, base_obj_idx):
+                    target_positions.append(tr_pos)
+                    block_positions_cur[move_obj_idx] = tr_pos
+                else:
+                    print("Shift position not empty")
+                    # print("Target position is ",tr_pos)
+                    # print("block_positions right now are ",block_positions) 
+                    # self.save_instance()
+                    return None, None
+            elif action == 'RIGHT':
+                tr_pos = self.dataset_world._right_target_pos(base_obj_idx, move_obj_idx, block_positions_cur)
+                if not self.dataset_world.is_positions_nearby(block_positions_cur, tr_pos, base_obj_idx):
+                    target_positions.append(tr_pos)
+                    block_positions_cur[move_obj_idx] = tr_pos
+                else:
+                    print("right position not empty")
+                    return None, None
+            elif action == 'FRONT':
+                tr_pos = self.dataset_world._front_target_pos(base_obj_idx, move_obj_idx, block_positions_cur)
+                if not self.dataset_world.is_positions_nearby(block_positions_cur, tr_pos, base_obj_idx):
+                    target_positions.append(tr_pos)
+                    block_positions_cur[move_obj_idx] = tr_pos
+                else:
+                    return None, None
+            elif action == 'BACK':
+                tr_pos = self.dataset_world._back_target_pos(base_obj_idx, move_obj_idx, block_positions_cur)
+                if not self.dataset_world.is_positions_nearby(block_positions_cur, tr_pos, base_obj_idx):
+                    target_positions.append(tr_pos)
+                    block_positions_cur[move_obj_idx] = tr_pos
+                else:
+                    return None, None
+            else:
+                raise ValueError("Unknown action %s" % action)
+            plan.append((move_obj_idx, tr_pos))
+
+        return target_positions, plan
+
+

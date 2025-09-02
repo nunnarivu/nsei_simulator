@@ -69,7 +69,7 @@ class DataConstructor(object):
         self.simulator_configs = simulator_configs
         
     def construct_data(self, dataset_dir:str, template_file:str, metadata_file:str):
-        # self.construct_handle.load_metadata(metadata_file)
+        self.construct_handle.load_metadata(metadata_file)
         self.construct_handle.select_template(template_file)
         
         #generate a random scene based on given configs and template
@@ -78,21 +78,19 @@ class DataConstructor(object):
         self.construct_handle.save_checkpoint(state_tag = "initial_state", dump_to_file=True, root_folder=dataset_dir)
 
 
-        previous_programs = set()
+        previous_programs = list()
         for i in range(self.required_dataset_configs['num_instruction_per_scene']):
            
             #create new dir for saving the sample
             sample_no = len(os.listdir(dataset_dir)) 
             smpl_dir = os.path.join(dataset_dir, "{0:0=4d}".format(sample_no))
             os.mkdir(smpl_dir)
-            
-            breakpoint()
+
             #reset the generator state to the cached state
             self.construct_handle.simulator_handle.reset()
             self.construct_handle.load_checkpoint(from_file = os.path.join(dataset_dir, "initial_state.pkl"))
             
             self.construct_handle.save_instance(smpl_dir) #save the initial scene S00
-            
             status = self.construct_handle.generate_grounded_functional_program(object_choice = self.additional_dataset_configs.get('instantiation_type', 'random'),
                                                                                  max_attempts = self.additional_dataset_configs['max_program_generation_atempts'],)
             if status == False:
@@ -106,8 +104,8 @@ class DataConstructor(object):
             
             program, command_lexed, command, language_complexity = self.construct_handle.generate_instruction(complexity = self.additional_dataset_configs.get('complexity', None))
             self.construct_handle.save_demonstration_info(command_lexed, command, language_complexity, program)
-            previous_programs.add(self.construct_handle.get_program())   
-            
+            previous_programs.append(self.construct_handle.get_program())
+
     def kill(self):
         self.construct_handle.simulator_handle.disconnect()
     

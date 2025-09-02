@@ -1,13 +1,11 @@
 import numpy as np
-import random
-from panda.settings import object_dimensions
-from panda.settings import directions as setting_direction
+from dataset.nsrm.configs import ParameterSettings as settings
 
 class SceneGraph(object):
-    def __init__(self,objects,positions, config):
+    def __init__(self,objects, config):
         self.objects = [o.__dict__ for o in objects]
-        self.positions = positions
-        self.directions = config.get('directions',setting_direction)
+        self.positions = [o.pos for o in objects]
+        self.directions = config.get('directions', settings.DIRECTIONS)
         self.eps = config.get('relation_epsilon', 0.075)
         self.relationships = self.find_relations()
 
