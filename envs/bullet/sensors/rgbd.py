@@ -2,7 +2,7 @@ import numpy as np
 import importlib
 
 class RGBDSensor:
-    def __init__(self, client, camera_info, image_info):
+    def __init__(self, client, camera_info , image_info ):
         self.client = client  #pybullet client
         valid_param, _ = self.is_camera_info_valid(camera_info)
 
@@ -25,7 +25,7 @@ class RGBDSensor:
         self.__dict__.update(state)
         
         
-    def is_camera_info_valid(self, camera_info):
+    def is_camera_info_valid(self, camera_info:dict):
         # Validate camera_info
         if "camera_eye_position" in camera_info and \
            "camera_target_position" in camera_info and \
@@ -53,7 +53,7 @@ class RGBDSensor:
         
         return False, -1
 
-    def is_image_info_valid(self, image_info):
+    def is_image_info_valid(self, image_info:dict):
         # Validate image_info
         if "width" in image_info and "height" in image_info:
             if isinstance(image_info["width"], int) and image_info["width"] > 0 and \
@@ -115,6 +115,7 @@ class RGBDSensor:
             projectionMatrix=self.projection_matrix,
             renderer=renderer
         )
+        depth = (self.camera_info["far_val"] * self.camera_info["near_val"]) / (self.camera_info["far_val"] - (self.camera_info["far_val"] - self.camera_info["near_val"]) * depth)
         return dict(width=width, height=height, rgb=rgb, depth=depth, mask=seg)
 
     def get_camera_image_from_visualizer(self):
@@ -154,7 +155,7 @@ class RGBDSensor:
         return -1.0 <= ndc[0] <= 1.0 and -1.0 <= ndc[1] <= 1.0 and -1.0 <= ndc[2] <= 1.0
 
 
-    def _view_to_debug_params(view_matrix):
+    def _view_to_debug_params(self, view_matrix):
         """Convert a 4x4 OpenGL-style view matrix into PyBullet debug camera params."""
         M = np.array(view_matrix).reshape(4, 4).T
         R = M[:3, :3]
@@ -177,3 +178,5 @@ class RGBDSensor:
         distance = np.linalg.norm(target - eye)
 
         return distance, yaw, pitch, target.tolist()
+    
+    

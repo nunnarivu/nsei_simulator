@@ -60,7 +60,7 @@
             }
         ],
         "constraints": {
-            "actions": ["BACK", "FRONT"],
+            "actions": ["LEFT", "RIGHT", "BACK", "FRONT", "TOP"],
             "inputs": [
                 1,
                 2

@@ -58,6 +58,7 @@ class ProgramGenerator(DatasetConstructBase):
             self.generate_random_scene()
 
     def select_template(self, template_file:str):
+        self.template_file = template_file
         with open(template_file, 'r') as file:
             self.template = random.choice(json.load(file))
 
@@ -180,7 +181,7 @@ class ProgramGenerator(DatasetConstructBase):
                 block_positions = [self.objects[i].pos for i in range(len(self.objects))]
                 _, self.plan = self.check_action_compatibility(self.get_program(), block_positions)
                 assert self.plan is not None , "There is a bug in program generation"
-                self.execute_plan(self.plan, use_robot = False)
+                self.execute_plan(self.plan, use_robot = False, save_keyframes=True)
                 return True
 
         if len(self.program) == 0:
@@ -191,18 +192,17 @@ class ProgramGenerator(DatasetConstructBase):
         return self.program
     
     def save_demonstration_info(self, command_lexed, command, complexity, program):
-        return
         info = dict()
         info['instruction'] = command
         info['instruction_lexed'] = command_lexed
-        scene_info = self.get_scene_info() 
-        info.update(scene_info)
         info['template_json_filename'] = self.template_file
         info['template_id'] = self.template['template_id']
         info['language_complexity'] = complexity
-        info['program'] = self.symbolic_program
         info['grounded_program'] = program
-        with open(f"{self.instance_dir}/demo.json", 'w') as write_file:
+        info['program'] = self.symbolic_program
+        info['scene_info'] = self.get_scene_info()
+        info['transition_info'] = self.get_transition_info()
+        with open(f"{self.default_save_folder}/demo.json", 'w') as write_file:
             json.dump(info, write_file)
     
     def save_checkpoint(self, state_tag:str = None, dump_to_file:bool = False, root_folder:str = None):

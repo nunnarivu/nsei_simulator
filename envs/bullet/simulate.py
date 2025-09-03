@@ -60,12 +60,12 @@ class SimulatorInterface(object):
         '''
         Returns the first robot in the world
         '''
-        if len(self.world.robots) == 0:
+        if len(self.world.robot_list) == 0:
             return None
-        elif len(self.world.robots) > 1:
-            warnings.warn("More than one robot in the world. Returning the first robot. Use world.robots attribute to access all robots")  
-        
-        return self.world.robots[0]
+        elif len(self.world.robot_list) > 1:
+            warnings.warn("More than one robot in the world. Returning the first robot. Use world.robots attribute to access all robots")
+
+        return self.world.robot_list[0]
 
 
     def step_simulation(self, num_steps:int):

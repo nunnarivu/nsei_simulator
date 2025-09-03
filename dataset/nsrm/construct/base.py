@@ -1,4 +1,8 @@
 
+from collections import defaultdict
+import os
+import cv2
+from PIL import Image
 import numpy as np
 from dataset.nsrm.configs import ParameterSettings as settings
 from dataset.nsrm.construct.program_engine import ProgramExecutor
@@ -18,7 +22,7 @@ class DatasetWorld(object):
         table = self.simulator_handle.world.add(name = 'table', pos=(0, 0, 0), ori=(0, 0, 0, 1), obj_type='entity', model_path=settings.OBJECT_URDF_PATHS['table'])
         table.change_color([0.48, 0.435, 0.2, 1])
         self.simulator_handle.step_simulation(num_steps=100)
-        
+        #ADD ROBOT: TODO
         
     def relative_target_pos(self, relation):
         pass
@@ -131,6 +135,7 @@ class DatasetConstructBase(object):
     def __init__(self, simulator_handle, configs):
         self.dataset_world = DatasetWorld(simulator_handle, configs)
         self.executor = ProgramExecutor(self)
+        self.default_save_folder = None
 
     @property
     def simulator_handle(self):
@@ -144,24 +149,68 @@ class DatasetConstructBase(object):
     def objects(self):
         return self.dataset_world.simulator_handle.world.find(type='object')
 
-    def hide_robot_body(self, **kwargs):
-        pass
+    def hide_robot_body(self, ):
+        if self.simulator_handle.robot is not None:
+            self.simulator_handle.robot.change_color([0, 0, 0, 0])
     
     def  show_robot_body(self, ):
-        pass
-    
-    def save_instance(self, save_dir):
-        pass
-    
+        if self.simulator_handle.robot is not None:
+            self.simulator_handle.robot.change_color([1, 1, 1, 1])
+
+    def save_instance(self, root_folder = None, state_tag = None, show_panda = False):
+        if root_folder is None:
+            root_folder = self.default_save_folder
+        demo_state_no = sum([os.path.isdir(os.path.join(root_folder, s)) for s in os.listdir(root_folder)])
+        this_demo_folder = os.path.join(root_folder, 'S'+"{0:0=2d}".format(demo_state_no))
+        os.makedirs(this_demo_folder)
+        
+        if show_panda == False:
+            self.hide_robot_body()
+            
+        for view in settings.CAPTURE_CAMERA_VIEWS:
+            camera = self.simulator_handle.sensors.get_sensor(type = 'rgbd', name='rgbd_'+view)
+            camera_output = camera.get_camera_image(use_gpu = True)
+            rgba, depth, mask = camera_output['rgb'], camera_output['depth'], camera_output['mask']
+            #make values in mask -1 if it is not in self.objects
+            obj_ids = [obj.id for obj in self.objects]
+            mask[~np.isin(mask, obj_ids)] = -1
+            
+            os.makedirs(os.path.join(this_demo_folder, view), exist_ok=True)
+            Image.fromarray(rgba, 'RGBA').save(os.path.join(this_demo_folder, view, 'rgb.png'))
+            Image.fromarray(depth, 'L').save(os.path.join(this_demo_folder, view, 'depth.png'))
+            Image.fromarray(mask, 'L').save(os.path.join(this_demo_folder, view, 'mask.png'))
+            np.save(os.path.join(this_demo_folder, view, 'mask.npy'), mask)
+            np.save(os.path.join(this_demo_folder, view, 'depth.npy'), depth)
+
     def get_scene_info(self, ):
-        pass
-    
-    def cache_current_position_info(self, ):
-        pass
-    
-    def execute_plan(self, plan, use_robot = False):
+        current_state_info = self.simulator_handle.world.get_state_info()
+        scene_info = defaultdict(list)
+        for key, value in current_state_info.items():
+            if value['type'] == 'object':
+                scene_info['object_names'].append(key)
+                scene_info['object_ids'].append(value['info']['obj_id'])
+                scene_info['model_paths'].append(value['info']['model_path'])
+        return scene_info
+
+    def get_transition_info(self, ):
+        state_cache_info = self.simulator_handle.world.state_cache
+        transition_info = defaultdict(lambda: defaultdict(list))
+        for _, this_state_info in state_cache_info.items():
+            for obj_name, obj_info in this_state_info.items():
+                if obj_info['type'] == 'object':
+                    transition_info[obj_name]['position'].append(obj_info['pos'])
+                    transition_info[obj_name]['orientation'].append(obj_info['ori'])
+                    transition_info[obj_name]['linear_velocity'].append(obj_info['linear_vel'])
+                    transition_info[obj_name]['angular_velocity'].append(obj_info['angular_vel'])
+        return transition_info
+
+    def execute_plan(self, plan, use_robot = False, save_keyframes = True):
         for move_obj_idx, target_pos in plan:
             self.move_object(move_obj_idx, target_pos, use_robot)
+        
+        if save_keyframes:
+            self.simulator_handle.world.cache_state()
+            self.save_instance()
 
     def move_object(self, move_obj_idx, target_pos, use_robot = False):
         if use_robot:

@@ -20,9 +20,11 @@ class Sensors(object):
         state["physics_client"] = importlib.import_module(module_name)
         self.__dict__.update(state)
         
+        
     def add_sensor(self, sensor_type: str, sensor_params: dict, sensor_name = None):
         if sensor_type == 'rgbd':
             from envs.bullet.sensors.rgbd import RGBDSensor
+            assert 'camera_info' in sensor_params and 'image_info' in sensor_params, "RGDB sensor requires two keys in sensor_params. Missing keys: camera_info or image_info"
             sensor = RGBDSensor(self.physics_client, sensor_params['camera_info'], sensor_params['image_info'])
             self.sensor_list.append((sensor, sensor_type, sensor_name))
         else:

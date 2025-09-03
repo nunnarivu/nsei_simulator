@@ -25,7 +25,9 @@ class Entity(object):
             assert self.id == expected_id, "The expected body ID is not yet available."  
             
     def __str__(self):
-        return json.dumps({"id": self.id, "name": self.name, "pos": self.pos, "ori": self.ori, "model_path": self.model_path})
+        return json.dumps({"id": self.id, "name": self.name, 
+                           "pos": self.pos, "ori": self.ori, 
+                           "model_path": self.model_path})
     
     def __getstate__(self):
         state = self.__dict__.copy()
@@ -202,10 +204,8 @@ class WorldUtils(object):
 
 class World(WorldUtils):
     def __init__(self, physics_client):
-        super().__init__(physics_client)
-        self.checkpoint_cache = {} 
+        super().__init__(physics_client) 
         self.state_cache = {} 
-        self.state_transition_history = []
 
     def add(self, name:str, pos:tuple, ori:tuple, obj_type:str = 'object', **kwargs):
         '''
@@ -278,11 +278,8 @@ class World(WorldUtils):
             for obj in obj_list:
                 obj.remove()
                 obj_list.remove(obj)
-                
-    
-    def cache_state(self, tag = None) -> None:
-        if tag is None:
-            tag = "state_"+str(len(self.state_cache))
+
+    def get_state_info(self, ):
         state = {}
         for obj in self.object_list + self.special_object_list + self.entity_list + self.robot_list:
             pos, ori = p.getBasePositionAndOrientation(obj.id)
@@ -294,10 +291,15 @@ class World(WorldUtils):
                 "angular_vel": angular_vel,
                 "class_type": type(obj).__name__,
                 "type" : self.class2type[type(obj).__name__],
-                "info": obj.__str__(),
+                "info": json.loads(obj.__str__()),
             }
-        self.state_cache[tag] = state
-    
+        return state
+        
+    def cache_state(self, tag = None) -> None:
+        if tag is None:
+            tag = "state_"+str(len(self.state_cache))
+        self.state_cache[tag] = self.get_state_info()
+
     def is_position_colliding(self, position:list, obj_name:str = None, obj_type:str = None):
         objects_to_check = []
         if obj_name is not None:

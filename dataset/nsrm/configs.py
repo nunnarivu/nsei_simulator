@@ -93,23 +93,37 @@ class ParameterSettings(object):
     
     CAMERA_VIEWS = {
         'front_0' : {
-			'camera_eye_position': [0, 0, 0.5],
-			'camera_target_position': [0, 0, 0],
-			'camera_up_vector': [0, 1, 0],
-			'fov': 60,
+			'camera_eye_position': [0, -0.5, 0.85],
+			'camera_target_position': [0, 0.5, 0.7],
+			'camera_up_vector': [0, 0, 1],
+			'fov': 80,
 			'aspect': 1.33,
-			'near_val': 0.1,
-			'far_val': 100
+			'near_val': 0.05,
+			'far_val': 4
             },
-        'diag1_45' : {
-            'camera_eye_position': [0, -0.5, 0.5],
-            'camera_target_position': [0, 0, 0],
+        'top_down':{
+            'camera_eye_position': [0, 0, 1.2],
+            'camera_target_position': [0, 0.0001, 0.64],
+            'camera_up_vector': [0,1,0],
+            'fov': 80,
+            'aspect': 1.3,
+            'near_val': 0.01,
+            'far_val': 6
+        },
+        'diag_45' : {
+            'camera_eye_position': [0, -0.6, 1.2],
+            'camera_target_position': [0, 0.2, 0.64],
             'camera_up_vector': [0, 0, 1],
-            'fov': 60,
+            'fov': 80,
             'aspect': 1.33,
-            'near_val': 0.1,
-            'far_val': 100
+            'near_val': 0.05,
+            'far_val': 4
             },
         }
+    CAPTURE_CAMERA_VIEWS = ['diag_45', 'top_down']
+    IMAGE_PARAMS = {
+        'width': 1080,
+        'height': 720,
+    }
     ##END OF CLASS
     

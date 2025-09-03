@@ -73,24 +73,35 @@ class DataConstructor(object):
         self.construct_handle.select_template(template_file)
         
         #generate a random scene based on given configs and template
-        self.construct_handle.dataset_world.reset_world()
-        self.construct_handle.generate_random_scene()
+        self.construct_handle.dataset_world.reset_world() #ADDROBOT: TODO
+        self.construct_handle.generate_random_scene() 
+        #setup cameras
+        for view in settings.CAPTURE_CAMERA_VIEWS:
+            view_info = settings.CAMERA_VIEWS[view]
+            image_info = settings.IMAGE_PARAMS
+            self.construct_handle.simulator_handle.sensors.add_sensor('rgbd', dict(camera_info=view_info, image_info=image_info), sensor_name='rgbd_'+view)
+
+        #Save the initial state including objs, sensors and robot state. Dump to file for easy reloading
         self.construct_handle.save_checkpoint(state_tag = "initial_state", dump_to_file=True, root_folder=dataset_dir)
-
-
+        
         previous_programs = list()
         for i in range(self.required_dataset_configs['num_instruction_per_scene']):
            
             #create new dir for saving the sample
-            sample_no = len(os.listdir(dataset_dir)) 
+            sample_no = sum([os.path.isdir(os.path.join(dataset_dir, d)) for d in os.listdir(dataset_dir)])
             smpl_dir = os.path.join(dataset_dir, "{0:0=4d}".format(sample_no))
             os.mkdir(smpl_dir)
+            #copy initial state
+            os.system(f"cp {os.path.join(dataset_dir, 'initial_state.pkl')} {os.path.join(smpl_dir, 'initial_state.pkl')}")
+            os.system(f"cp {os.path.join(dataset_dir, 'initial_state.bullet')} {os.path.join(smpl_dir, 'initial_state.bullet')}")
 
             #reset the generator state to the cached state
             self.construct_handle.simulator_handle.reset()
-            self.construct_handle.load_checkpoint(from_file = os.path.join(dataset_dir, "initial_state.pkl"))
-            
-            self.construct_handle.save_instance(smpl_dir) #save the initial scene S00
+            self.construct_handle.load_checkpoint(from_file = os.path.join(smpl_dir, "initial_state.pkl"))
+
+            self.construct_handle.default_save_folder = smpl_dir
+            self.construct_handle.save_instance() #save the initial scene S00
+            self.construct_handle.simulator_handle.world.cache_state('initial_state')
             status = self.construct_handle.generate_grounded_functional_program(object_choice = self.additional_dataset_configs.get('instantiation_type', 'random'),
                                                                                  max_attempts = self.additional_dataset_configs['max_program_generation_atempts'],)
             if status == False:
@@ -105,6 +116,9 @@ class DataConstructor(object):
             program, command_lexed, command, language_complexity = self.construct_handle.generate_instruction(complexity = self.additional_dataset_configs.get('complexity', None))
             self.construct_handle.save_demonstration_info(command_lexed, command, language_complexity, program)
             previous_programs.append(self.construct_handle.get_program())
+        
+        os.system(f"rm {os.path.join(dataset_dir, 'initial_state.pkl')}")
+        os.system(f"rm {os.path.join(dataset_dir, 'initial_state.bullet')}")
 
     def kill(self):
         self.construct_handle.simulator_handle.disconnect()
