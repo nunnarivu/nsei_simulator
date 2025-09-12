@@ -1,0 +1,17 @@
+[{
+    "instruction": "Construct a <__IC__> of <__param_0__.NAME> <__param_0__> using {__param_1__[0]} {__param_1__[1]}",
+    "parameters": {
+        "param_0": "int",
+        "param_1": "(Color, Type)"
+    },
+    "constraints":[
+        {
+        "cons_type": "multiple_objects",
+        "num_objects": "__param_0__",
+        "type": "__param_1__[1]",
+        "color": "__param_1__[0]"
+    }
+    ],
+    "program":"blocks = filter(__param_1__)\nassign_focus((0,0,0.65))\n__IC__(__param_0__, blocks)"
+}
+]

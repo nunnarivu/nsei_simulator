@@ -24,9 +24,19 @@ class DatasetWorld(object):
         self.simulator_handle.step_simulation(num_steps=100)
         #ADD ROBOT: TODO
         
-    def relative_target_pos(self, relation):
-        pass
-    
+    def relative_target_pos(self, relation, *args):
+        handlers = {
+            'TOP': self._top_target_pos,
+            'LEFT': self._left_target_pos,
+            'RIGHT': self._right_target_pos,
+            'FRONT': self._front_target_pos,
+            'BACK': self._back_target_pos,
+        }
+        if relation in handlers:
+            return handlers[relation](*args)
+        else:
+            raise ValueError(f"Unknown relation: {relation}")
+        
     def in_camera_view(self, pos):
         return self.simulator_handle.sensors.get_sensor('rgbd_1').is_inside_camera_view(pos)
 
@@ -47,22 +57,32 @@ class DatasetWorld(object):
     def is_position_clear(self, pos):
         return not self.simulator_handle.world.is_position_colliding(pos, obj_type = 'object')
     
-    def is_positions_nearby(self, object_positions, target_position = None, skip_object = None, threshold = 0.05):
-        for obj_pos in object_positions:
-            if obj_pos == skip_object:
-                continue
-            if np.linalg.norm(np.array(obj_pos) - np.array(target_position)) < threshold:
-                return True
-        return False
+    def is_positions_nearby(self, object_positions, target_position = None, skip_objects:list = [], threshold = 0.05):
+        if target_position is not None:
+            for obj_idx, obj_pos in enumerate(object_positions):
+                if obj_idx in skip_objects:
+                    continue
+                if np.linalg.norm(np.array(obj_pos) - np.array(target_position)) < threshold:
+                    return True
+            return False
+        else:
+            nearby = False
+            for i in range(len(object_positions)):
+                if i in skip_objects:
+                    continue
+                target_position = object_positions[i]
+                nearby = nearby or self.is_positions_nearby(object_positions, target_position, skip_objects = [i], threshold = threshold)
+            return nearby
 
-    def get_block_positions(self, num_blocks, ensure_visibility = False, ):
+    def get_block_positions(self, num_blocks, ensure_visibility:bool = False, avoid_positions:list = [] ):
         if ensure_visibility:
             raise NotImplementedError
         block_positions =  None
+        
         for i in range(1000):
             temp_block_positions = [self.get_random_table_position() for _ in range(num_blocks)]
             valid = all(self.is_position_clear(pos) for pos in temp_block_positions)
-        
+            valid = valid and not self.is_positions_nearby(temp_block_positions+avoid_positions)
             if valid:
                 if ensure_visibility and (not all(self.simulator_handle.is_inside_camera_view(pos) for pos in temp_block_positions)):
                     continue
@@ -136,6 +156,8 @@ class DatasetConstructBase(object):
         self.dataset_world = DatasetWorld(simulator_handle, configs)
         self.executor = ProgramExecutor(self)
         self.default_save_folder = None
+        self.cached_state = []
+        
 
     @property
     def simulator_handle(self):
@@ -208,9 +230,9 @@ class DatasetConstructBase(object):
         for move_obj_idx, target_pos in plan:
             self.move_object(move_obj_idx, target_pos, use_robot)
         
-        if save_keyframes:
-            self.simulator_handle.world.cache_state()
-            self.save_instance()
+            if save_keyframes:
+                self.simulator_handle.world.cache_state()
+                self.save_instance()
 
     def move_object(self, move_obj_idx, target_pos, use_robot = False):
         if use_robot:
@@ -231,14 +253,14 @@ class DatasetConstructBase(object):
             
             # check if move object doesn't have anything on top
             up_pos = self.dataset_world._top_target_pos(move_obj_idx, move_obj_idx, block_positions_cur)
-            if self.dataset_world.is_positions_nearby(object_positions = block_positions_cur, target_position = up_pos, skip_object = move_obj_idx):
+            if self.dataset_world.is_positions_nearby(object_positions = block_positions_cur, target_position = up_pos, skip_objects = [move_obj_idx,]):
                 print("Not clear from top ")
                 return None, None
             
             # check if target position valid
             if action == 'TOP':
                 tr_pos = self.dataset_world._top_target_pos(base_obj_idx, move_obj_idx, block_positions_cur)
-                if not self.dataset_world.is_positions_nearby(block_positions_cur, tr_pos, base_obj_idx):
+                if not self.dataset_world.is_positions_nearby(block_positions_cur, tr_pos, skip_objects=[base_obj_idx,]):
                     target_positions.append(tr_pos)
                     block_positions_cur[move_obj_idx] = tr_pos
                 else:
@@ -246,7 +268,7 @@ class DatasetConstructBase(object):
                     return None, None
             elif action == 'LEFT':
                 tr_pos = self.dataset_world._left_target_pos(base_obj_idx, move_obj_idx, block_positions_cur)
-                if not self.dataset_world.is_positions_nearby(block_positions_cur, tr_pos, base_obj_idx):
+                if not self.dataset_world.is_positions_nearby(block_positions_cur, tr_pos):
                     target_positions.append(tr_pos)
                     block_positions_cur[move_obj_idx] = tr_pos
                 else:
@@ -257,7 +279,7 @@ class DatasetConstructBase(object):
                     return None, None
             elif action == 'RIGHT':
                 tr_pos = self.dataset_world._right_target_pos(base_obj_idx, move_obj_idx, block_positions_cur)
-                if not self.dataset_world.is_positions_nearby(block_positions_cur, tr_pos, base_obj_idx):
+                if not self.dataset_world.is_positions_nearby(block_positions_cur, tr_pos):
                     target_positions.append(tr_pos)
                     block_positions_cur[move_obj_idx] = tr_pos
                 else:
@@ -265,14 +287,14 @@ class DatasetConstructBase(object):
                     return None, None
             elif action == 'FRONT':
                 tr_pos = self.dataset_world._front_target_pos(base_obj_idx, move_obj_idx, block_positions_cur)
-                if not self.dataset_world.is_positions_nearby(block_positions_cur, tr_pos, base_obj_idx):
+                if not self.dataset_world.is_positions_nearby(block_positions_cur, tr_pos):
                     target_positions.append(tr_pos)
                     block_positions_cur[move_obj_idx] = tr_pos
                 else:
                     return None, None
             elif action == 'BACK':
                 tr_pos = self.dataset_world._back_target_pos(base_obj_idx, move_obj_idx, block_positions_cur)
-                if not self.dataset_world.is_positions_nearby(block_positions_cur, tr_pos, base_obj_idx):
+                if not self.dataset_world.is_positions_nearby(block_positions_cur, tr_pos):
                     target_positions.append(tr_pos)
                     block_positions_cur[move_obj_idx] = tr_pos
                 else:
@@ -284,3 +306,9 @@ class DatasetConstructBase(object):
         return target_positions, plan
 
 
+    def save_checkpoint(self, state_tag:str = None, dump_to_file:bool = False, root_folder:str = None):
+        tag, checkpoint_dict = self.simulator_handle.save_checkpoint(state_tag, dump_to_file, root_folder)
+        self.cached_state.append(dict(tag = tag, checkpoint = checkpoint_dict))
+
+    def load_checkpoint(self, state_tag = None, from_file = None):
+        self.simulator_handle.load_checkpoint(state_tag, from_file)

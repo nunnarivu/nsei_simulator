@@ -1,15 +1,3 @@
-'''
-REQUIRED_DATASET_CONFIGS:
-    required_object_types(List): The objects that we want in the scene - a sublist of ['Cube','Tray','Lego','Dice']
-    num_objexts_per_type(dict): keys = [num_+Obj[0].lower()+Obj[1:]+'s' for Obj in required_object_types]. If not given, the num of objects for each required_type  will be randomly choosen
-    rotation(Bool): If True the objects will be rotated randomly which the scene gets initialized
-    euler_orientation(3-tuple): By default orientation is same as that of the object in the urdf file. No rotation is applied. Provide a value if you want all the objects to be rotated by a same value.
-
-'''
-
-
-
-
 
 simulator_configs  = {
     "GUI_MODE": True,
@@ -21,24 +9,16 @@ simulator_configs  = {
 }
 
 
+
+
 required_dataset_configs = {
-    'MAX_OBJECTS': 4,
    'required_object_types' :['cube', "dice"], #Type: List, Options: 'cube', 'lego', 'dice', Default: ['cube', 'dice']
-   # 'num_objects_per_type' :{'cube':3,'lego':2,'dice':1}, #If not given, num_objects will get randomly initialized
    'rotation': False,
-   'num_instruction_per_scene':1,
-   #euler_orientation = (0,0,0) 
-
-
+   'num_distractors': 5
 }
 
 
-additional_dataset_configs = {
-   'instantiation_type' : 'random', #Type: str, options: ['random', 'default'], Default: 'default
-   'complexity' : 'simple', #options: ['simple', 'complex', 'compound'], Default: Randomly choosen
-   'relations' : ['left', 'right', 'top', 'behind', 'front'], #Use this to restrict relations. If this key is not there, the relational_concepts will be sampled from ["left", "right", "behind", "front"]
-   'max_program_generation_atempts': 3000 #For each scene, the simulator will try to find a compatible program. This key restricts the number of such attempts. If all attempts failed, then the scene will get deleted.
-}
+
 
 
 class ParameterSettings(object):
@@ -61,6 +41,9 @@ class ParameterSettings(object):
             'magenta': (1, 0, 1, 1), 
             'cyan': (0, 1, 1, 1)
             }
+    MAX_NUM_OBJECTS = 1000
+    MAX_INT_VALUE = 8
+    MIN_INT_VALUE = 4
     
     OBJECT_URDF_PATHS = {
         "plane": "plane.urdf",
